@@ -6,9 +6,12 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.text.SimpleDateFormat;
+import java.util.Objects;
 
 public class ShotPut {
 
@@ -22,7 +25,7 @@ public class ShotPut {
     private static JLabel countLabel;
 
     // Build window function
-    private static JFrame buildWindow() throws IOException {
+    private static JFrame buildWindow() {
         JFrame frame = new JFrame("ShotPut");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -31,10 +34,9 @@ public class ShotPut {
 
         frame.setSize((int) (520 * SCREEN_SIZE_MULTIPLIER), (int) (520 * SCREEN_SIZE_MULTIPLIER));
         frame.setResizable(false);
-
         frame.setLocation(0, 0);
 
-        Image iconImage = ImageIO.read(new File("res/icon.jpg"));
+        Image iconImage = new ImageIcon(Objects.requireNonNull(ShotPut.class.getResource("/icon.jpg"))).getImage();
         frame.setIconImage(iconImage);
 
         return frame;
@@ -42,27 +44,22 @@ public class ShotPut {
 
     // Set save location function (default)
     private static void setSaveLocation() {
-        String saveLocation;
         String os = System.getProperty("os.name").toLowerCase();
-
         if (os.contains("win")) {
-            saveLocation = System.getenv("USERPROFILE") + "\\Pictures\\ShotPut Captures";
+            SAVE_LOCATION = System.getenv("USERPROFILE") + "\\Pictures\\ShotPut Captures";
         } else {
-            saveLocation = Paths.get(System.getProperty("user.home")) + "/Pictures/ShotPut Captures";
+            SAVE_LOCATION = Paths.get(System.getProperty("user.home")).resolve("Pictures/ShotPut Captures").toString();
         }
-
-        SAVE_LOCATION = saveLocation;
     }
 
     // Start method
-    private static void start() throws IOException {
+    private static void start() {
         JFrame window = buildWindow();
 
         SCREENSHOT_KEY = "Back Slash";
         setSaveLocation();
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridBagLayout());
+        JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets((int) (10 * SCREEN_SIZE_MULTIPLIER), (int) (10 * SCREEN_SIZE_MULTIPLIER), (int) (10 * SCREEN_SIZE_MULTIPLIER), (int) (10 * SCREEN_SIZE_MULTIPLIER));
@@ -137,7 +134,6 @@ public class ShotPut {
         JButton changePathButton = new JButton("Change");
         changePathButton.setPreferredSize(new Dimension((int) (120 * SCREEN_SIZE_MULTIPLIER), (int) (40 * SCREEN_SIZE_MULTIPLIER)));
         changePathButton.setFont(labelFont);
-
         changePathButton.addActionListener(e -> selectOutputFolder(window, savePathField));
 
         gbc.gridx = 2;
@@ -167,10 +163,8 @@ public class ShotPut {
 
         // Add panel
         window.getContentPane().add(panel);
-
         window.setVisible(true);
     }
-
 
     // Pause/start function
     private static void togglePausePlay(JButton pausePlayButton, JFrame window) {
@@ -191,9 +185,10 @@ public class ShotPut {
                             BufferedImage screenFullImage = new Robot().createScreenCapture(screenRect);
                             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
                             String timestamp = sdf.format(new Date());
-                            File file = new File(SAVE_LOCATION, "screenshot_" + timestamp + ".png");
-                            ImageIO.write(screenFullImage, "png", file);
-                        } catch (AWTException | IOException ex) {
+                            Path filePath = Paths.get(SAVE_LOCATION, "screenshot_" + timestamp + ".png");
+                            Files.createDirectories(filePath.getParent());
+                            ImageIO.write(screenFullImage, "png", filePath.toFile());
+                        } catch (Exception ex) {
                             System.out.println("Screenshot failed.");
                         }
                     }
@@ -231,20 +226,29 @@ public class ShotPut {
             File selectedFolder = folderChooser.getSelectedFile();
             SAVE_LOCATION = selectedFolder.getAbsolutePath();
             savePathField.setText(SAVE_LOCATION);
+
+            Path path = Paths.get(SAVE_LOCATION);
+            if (Files.notExists(path)) {
+                try {
+                    Files.createDirectories(path);
+                } catch (IOException ex) {
+                    System.out.println("Cannot create folder.");
+                }
+            }
         }
     }
 
     // Scale logo function
-    private static ImageIcon scaleImageIcon() throws IOException {
-        BufferedImage img = ImageIO.read(new File("res/icon.jpg"));
-        int width = (int) (img.getWidth() * SCREEN_SIZE_MULTIPLIER);
-        int height = (int) (img.getHeight() * SCREEN_SIZE_MULTIPLIER);
+    private static ImageIcon scaleImageIcon() {
+        Image img = new ImageIcon(Objects.requireNonNull(ShotPut.class.getResource("/icon.jpg"))).getImage();
+        int width = (int) (img.getWidth(null) * SCREEN_SIZE_MULTIPLIER);
+        int height = (int) (img.getHeight(null) * SCREEN_SIZE_MULTIPLIER);
         Image scaledImage = img.getScaledInstance(width, height, Image.SCALE_SMOOTH);
         return new ImageIcon(scaledImage);
     }
 
     // Main method
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         start();
     }
 }
